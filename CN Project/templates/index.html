@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IP Calculator — Subnet Design Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #00d4aa;
+    --accent2: #3b82f6;
+    --danger: #f85149;
+    --warn: #f0a500;
+    --success: #3fb950;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg2);
+  }
+  .logo {
+    width: 38px; height: 38px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; font-size: 14px;
+    color: #0d1117;
+  }
+  header h1 { font-size: 1.15rem; font-weight: 700; }
+  header span { font-size: 0.8rem; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .badge-group { margin-left: auto; display: flex; gap: 8px; }
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+  .badge.green { background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid rgba(63,185,80,0.3); }
+  .badge.blue { background: rgba(59,130,246,0.15); color: var(--accent2); border: 1px solid rgba(59,130,246,0.3); }
+
+  /* Layout */
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+  .tab {
+    padding: 10px 18px; font-size: 13px; font-weight: 600;
+    font-family: 'Syne', sans-serif;
+    border: none; background: transparent; color: var(--muted);
+    cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.2s; margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Form elements */
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-row.single { grid-template-columns: 1fr; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+  }
+  input[type=text], input[type=number], textarea {
+    width: 100%; padding: 10px 12px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    transition: border-color 0.2s; outline: none;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 120px; }
+  button.primary {
+    padding: 10px 22px; background: var(--accent); color: #0d1117;
+    border: none; border-radius: var(--radius); font-weight: 700;
+    font-family: 'Syne', sans-serif; font-size: 13px;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  button.primary:hover { opacity: 0.85; }
+  button.secondary {
+    padding: 8px 16px; background: var(--bg3); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-weight: 600; font-family: 'Syne', sans-serif; font-size: 12px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  button.secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Results */
+  .result-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px; margin-top: 1.5rem;
+  }
+  .metric {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+  }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; font-weight: 600; }
+  .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: var(--text); word-break: break-all; }
+  .metric-value.accent { color: var(--accent); }
+  .metric-value.blue { color: var(--accent2); }
+  .metric-value.warn { color: var(--warn); }
+
+  /* Binary block */
+  .binary-block {
+    margin-top: 1.5rem; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .binary-block h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .binary-row { display: flex; gap: 12px; align-items: baseline; margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .binary-label { color: var(--muted); min-width: 80px; font-size: 11px; }
+  .binary-val { color: var(--accent); }
+  .bin-net { color: var(--accent2); }
+  .bin-host { color: var(--warn); }
+
+  /* Error */
+  .error-msg {
+    background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3);
+    border-radius: var(--radius); padding: 10px 14px;
+    color: var(--danger); font-size: 13px; margin-top: 1rem; display: none;
+  }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; margin-top: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: var(--bg3); padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; font-family: 'JetBrains Mono', monospace; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+  td.net { color: var(--accent); }
+  td.host { color: var(--accent2); }
+
+  /* VLSM subnet inputs */
+  .subnet-inputs { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .subnet-row { display: flex; gap: 8px; align-items: center; }
+  .subnet-row input { flex: 1; }
+  .subnet-row .label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .remove-btn {
+    padding: 6px 10px; background: transparent; color: var(--danger);
+    border: 1px solid rgba(248,81,73,0.3); border-radius: 6px;
+    cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .remove-btn:hover { background: rgba(248,81,73,0.1); }
+
+  /* Compare result */
+  .compare-result {
+    margin-top: 1.5rem; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .verdict {
+    font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; padding: 12px 16px;
+    border-radius: var(--radius); display: flex; align-items: center; gap: 10px;
+  }
+  .verdict.same { background: rgba(63,185,80,0.1); color: var(--success); border: 1px solid rgba(63,185,80,0.3); }
+  .verdict.diff { background: rgba(248,81,73,0.1); color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+  .verdict-icon { font-size: 1.3rem; }
+
+  /* Supernet result */
+  .supernet-result {
+    margin-top: 1.5rem; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .sn-big { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
+
+  /* CSV export */
+  .export-btn { margin-top: 1rem; }
+
+  /* IP Class pill */
+  .class-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .class-A { background: rgba(0,212,170,0.15); color: var(--accent); border: 1px solid rgba(0,212,170,0.3); }
+  .class-B { background: rgba(59,130,246,0.15); color: var(--accent2); border: 1px solid rgba(59,130,246,0.3); }
+  .class-C { background: rgba(240,165,0,0.15); color: var(--warn); border: 1px solid rgba(240,165,0,0.3); }
+  .class-D { background: rgba(248,81,73,0.15); color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+  .class-E { background: rgba(139,148,158,0.15); color: var(--muted); border: 1px solid rgba(139,148,158,0.3); }
+
+  .info-bar {
+    background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 1.5rem;
+    font-size: 12px; color: var(--muted); line-height: 1.6;
+  }
+  .info-bar strong { color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">IP</div>
+  <div>
+    <h1>IP Calculator <span>for Subnet Design</span></h1>
+  </div>
+  <div class="badge-group">
+    <span class="badge green">IPv4</span>
+    <span class="badge blue">VLSM</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('ipv4', this)">IPv4 Calculator</button>
+    <button class="tab" onclick="switchTab('vlsm', this)">VLSM Allocator</button>
+    <button class="tab" onclick="switchTab('compare', this)">Subnet Compare</button>
+    <button class="tab" onclick="switchTab('supernet', this)">Supernetting</button>
+  </div>
+
+  <!-- ===== IPv4 PANEL ===== -->
+  <div class="panel active" id="panel-ipv4">
+    <div class="info-bar">
+      Enter an IP address and subnet mask (in dotted decimal <strong>255.255.255.0</strong> or CIDR prefix <strong>/24</strong>). Supports Class A, B, C, D, and E.
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>IP Address</label>
+        <input type="text" id="ip-addr" placeholder="e.g. 192.168.1.50">
+      </div>
+      <div class="field">
+        <label>Subnet Mask or CIDR Prefix</label>
+        <input type="text" id="ip-mask" placeholder="e.g. 255.255.255.0 or /24 or 24">
+      </div>
+    </div>
+    <button class="primary" onclick="calcIPv4()">Calculate &rarr;</button>
+    <div class="error-msg" id="ipv4-err"></div>
+    <div id="ipv4-results"></div>
+  </div>
+
+  <!-- ===== VLSM PANEL ===== -->
+  <div class="panel" id="panel-vlsm">
+    <div class="info-bar">
+      Enter a base network and the number of hosts needed for each subnet. Subnets are allocated using the <strong>largest-first</strong> VLSM algorithm for maximum efficiency.
+    </div>
+    <div class="form-row single">
+      <div class="field">
+        <label>Base Network (CIDR)</label>
+        <input type="text" id="vlsm-base" placeholder="e.g. 192.168.1.0/24">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <label>Subnets — Hosts Needed</label>
+    </div>
+    <div class="subnet-inputs" id="subnet-inputs">
+      <div class="subnet-row">
+        <input type="number" min="1" placeholder="e.g. 50">
+        <span class="label">hosts needed</span>
+        <button class="remove-btn" onclick="removeSubnet(this)">✕</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:1rem">
+      <button class="secondary" onclick="addSubnet()">+ Add Subnet</button>
+      <button class="primary" onclick="calcVLSM()">Allocate Subnets &rarr;</button>
+    </div>
+    <div class="error-msg" id="vlsm-err"></div>
+    <div id="vlsm-results"></div>
+  </div>
+
+  <!-- ===== COMPARE PANEL ===== -->
+  <div class="panel" id="panel-compare">
+    <div class="info-bar">
+      Check whether two IP addresses belong to the <strong>same subnet</strong>. Enter both IPs and the shared subnet mask.
+    </div>
+    <div class="form-row three">
+      <div class="field">
+        <label>IP Address 1</label>
+        <input type="text" id="cmp-ip1" placeholder="e.g. 192.168.1.50">
+      </div>
+      <div class="field">
+        <label>IP Address 2</label>
+        <input type="text" id="cmp-ip2" placeholder="e.g. 192.168.1.200">
+      </div>
+      <div class="field">
+        <label>Subnet Mask / CIDR</label>
+        <input type="text" id="cmp-mask" placeholder="e.g. 255.255.255.0 or /24">
+      </div>
+    </div>
+    <button class="primary" onclick="calcCompare()">Compare &rarr;</button>
+    <div class="error-msg" id="cmp-err"></div>
+    <div id="cmp-results"></div>
+  </div>
+
+  <!-- ===== SUPERNET PANEL ===== -->
+  <div class="panel" id="panel-supernet">
+    <div class="info-bar">
+      Enter two or more contiguous networks (one per line in CIDR notation) to find their <strong>supernet</strong> via route aggregation.
+    </div>
+    <div class="form-row single">
+      <div class="field">
+        <label>Networks to Aggregate (one per line)</label>
+        <textarea id="sn-input" placeholder="192.168.0.0/24&#10;192.168.1.0/24&#10;192.168.2.0/24&#10;192.168.3.0/24"></textarea>
+      </div>
+    </div>
+    <button class="primary" onclick="calcSupernet()">Find Supernet &rarr;</button>
+    <div class="error-msg" id="sn-err"></div>
+    <div id="sn-results"></div>
+  </div>
+
+</div>
+
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+function showError(elId, msg) {
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearError(elId) {
+  const el = document.getElementById(elId);
+  el.style.display = 'none';
+  el.textContent = '';
+}
+
+async function post(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ===== IPv4 =====
+async function calcIPv4() {
+  clearError('ipv4-err');
+  document.getElementById('ipv4-results').innerHTML = '';
+  const ip = document.getElementById('ip-addr').value.trim();
+  const mask = document.getElementById('ip-mask').value.trim();
+  if (!ip || !mask) { showError('ipv4-err', 'Please fill in both fields.'); return; }
+
+  const data = await post('/calculate', { ip, mask });
+  if (data.error) { showError('ipv4-err', data.error); return; }
+
+  const metrics = [
+    ['Network Address', data.network_address, 'accent'],
+    ['Broadcast Address', data.broadcast_address, 'warn'],
+    ['First Usable Host', data.first_host, 'blue'],
+    ['Last Usable Host', data.last_host, 'blue'],
+    ['Subnet Mask', data.subnet_mask, ''],
+    ['Wildcard Mask', data.wildcard_mask, ''],
+    ['CIDR Notation', '/' + data.cidr, 'accent'],
+    ['Total Hosts', data.total_hosts.toLocaleString(), ''],
+    ['Usable Hosts', data.usable_hosts.toLocaleString(), ''],
+    ['Scope', data.is_private ? 'Private' : 'Public', data.is_private ? '' : 'blue'],
+  ];
+
+  const classHtml = `<span class="class-pill class-${data.ip_class}">Class ${data.ip_class}</span> <span style="font-size:11px;color:var(--muted)">${data.class_range}</span>`;
+
+  let html = `<div class="result-grid">`;
+  metrics.forEach(([label, value, cls]) => {
+    html += `<div class="metric"><div class="metric-label">${label}</div><div class="metric-value ${cls}">${value}</div></div>`;
+  });
+  html += `<div class="metric"><div class="metric-label">IP Class</div><div class="metric-value">${classHtml}</div></div>`;
+  html += `</div>`;
+
+  html += `<div class="binary-block">
+    <h3>Binary Representation</h3>
+    <div class="binary-row"><span class="binary-label">IP Address</span><span class="binary-val">${data.ip_binary}</span></div>
+    <div class="binary-row"><span class="binary-label">Subnet Mask</span><span class="binary-val">${data.mask_binary}</span></div>
+    <div class="binary-row"><span class="binary-label">Network</span><span class="bin-net">${data.network_binary}</span></div>
+    <div class="binary-row"><span class="binary-label">Wildcard</span><span class="bin-host">${data.wildcard_binary}</span></div>
+  </div>`;
+
+  document.getElementById('ipv4-results').innerHTML = html;
+}
+
+// ===== VLSM =====
+function addSubnet() {
+  const div = document.createElement('div');
+  div.className = 'subnet-row';
+  div.innerHTML = `<input type="number" min="1" placeholder="e.g. 100"><span class="label">hosts needed</span><button class="remove-btn" onclick="removeSubnet(this)">✕</button>`;
+  document.getElementById('subnet-inputs').appendChild(div);
+}
+function removeSubnet(btn) {
+  const rows = document.querySelectorAll('.subnet-row');
+  if (rows.length > 1) btn.parentElement.remove();
+}
+
+async function calcVLSM() {
+  clearError('vlsm-err');
+  document.getElementById('vlsm-results').innerHTML = '';
+  const network = document.getElementById('vlsm-base').value.trim();
+  const inputs = [...document.querySelectorAll('#subnet-inputs input[type=number]')];
+  const hosts = inputs.map(i => i.value.trim()).filter(Boolean);
+
+  if (!network) { showError('vlsm-err', 'Please enter a base network.'); return; }
+  if (!hosts.length) { showError('vlsm-err', 'Add at least one subnet.'); return; }
+
+  const data = await post('/vlsm', { network, hosts });
+  if (data.error) { showError('vlsm-err', data.error); return; }
+
+  let html = `<div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Network / CIDR</th><th>Subnet Mask</th>
+        <th>First Host</th><th>Last Host</th><th>Broadcast</th>
+        <th>Usable</th><th>Needed</th>
+      </tr></thead><tbody>`;
+
+  data.subnets.forEach(s => {
+    html += `<tr>
+      <td>${s.index}</td>
+      <td class="net">${s.network}/${s.cidr}</td>
+      <td>${s.subnet_mask}</td>
+      <td class="host">${s.first_host}</td>
+      <td class="host">${s.last_host}</td>
+      <td>${s.broadcast}</td>
+      <td>${s.usable_hosts}</td>
+      <td>${s.hosts_needed}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  html += `<div class="export-btn"><button class="secondary" onclick="exportCSV()">Export as CSV</button></div>`;
+
+  document.getElementById('vlsm-results').innerHTML = html;
+  window._vlsmData = data.subnets;
+}
+
+function exportCSV() {
+  if (!window._vlsmData) return;
+  const headers = ['#', 'Network', 'CIDR', 'Subnet Mask', 'First Host', 'Last Host', 'Broadcast', 'Usable Hosts', 'Hosts Needed'];
+  const rows = window._vlsmData.map(s => [s.index, s.network, s.cidr, s.subnet_mask, s.first_host, s.last_host, s.broadcast, s.usable_hosts, s.hosts_needed]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv,' + encodeURIComponent(csv);
+  a.download = 'vlsm_allocation.csv';
+  a.click();
+}
+
+// ===== Compare =====
+async function calcCompare() {
+  clearError('cmp-err');
+  document.getElementById('cmp-results').innerHTML = '';
+  const ip1 = document.getElementById('cmp-ip1').value.trim();
+  const ip2 = document.getElementById('cmp-ip2').value.trim();
+  const mask = document.getElementById('cmp-mask').value.trim();
+
+  if (!ip1 || !ip2 || !mask) { showError('cmp-err', 'Please fill in all three fields.'); return; }
+
+  const data = await post('/compare', { ip1, ip2, mask });
+  if (data.error) { showError('cmp-err', data.error); return; }
+
+  const icon = data.same_subnet ? '✓' : '✗';
+  const verdict = data.same_subnet ? 'Both IPs are in the same subnet' : 'IPs are in different subnets';
+  const cls = data.same_subnet ? 'same' : 'diff';
+
+  let html = `<div class="compare-result">
+    <div class="verdict ${cls}"><span class="verdict-icon">${icon}</span>${verdict}</div>
+    <div class="result-grid">
+      <div class="metric"><div class="metric-label">IP Address 1</div><div class="metric-value accent">${data.ip1}</div></div>
+      <div class="metric"><div class="metric-label">Network of IP1</div><div class="metric-value blue">${data.network1}</div></div>
+      <div class="metric"><div class="metric-label">IP Address 2</div><div class="metric-value accent">${data.ip2}</div></div>
+      <div class="metric"><div class="metric-label">Network of IP2</div><div class="metric-value blue">${data.network2}</div></div>
+      <div class="metric"><div class="metric-label">Subnet Mask</div><div class="metric-value">${data.subnet_mask}</div></div>
+    </div>
+  </div>`;
+
+  document.getElementById('cmp-results').innerHTML = html;
+}
+
+// ===== Supernet =====
+async function calcSupernet() {
+  clearError('sn-err');
+  document.getElementById('sn-results').innerHTML = '';
+  const lines = document.getElementById('sn-input').value.trim().split('\n').map(l => l.trim()).filter(Boolean);
+
+  if (lines.length < 2) { showError('sn-err', 'Enter at least 2 networks.'); return; }
+
+  const data = await post('/supernet', { networks: lines });
+  if (data.error) { showError('sn-err', data.error); return; }
+
+  let html = '';
+  data.supernets.forEach(sn => {
+    html += `<div class="supernet-result">
+      <div class="sn-big">${sn.supernet}</div>
+      <div class="result-grid">
+        <div class="metric"><div class="metric-label">Network Address</div><div class="metric-value accent">${sn.network_address}</div></div>
+        <div class="metric"><div class="metric-label">Broadcast</div><div class="metric-value warn">${sn.broadcast}</div></div>
+        <div class="metric"><div class="metric-label">Subnet Mask</div><div class="metric-value">${sn.subnet_mask}</div></div>
+        <div class="metric"><div class="metric-label">Prefix Length</div><div class="metric-value">/${sn.prefix}</div></div>
+        <div class="metric"><div class="metric-label">First Host</div><div class="metric-value blue">${sn.first_host}</div></div>
+        <div class="metric"><div class="metric-label">Last Host</div><div class="metric-value blue">${sn.last_host}</div></div>
+        <div class="metric"><div class="metric-label">Total Addresses</div><div class="metric-value">${sn.total_addresses.toLocaleString()}</div></div>
+        <div class="metric"><div class="metric-label">Aggregates</div><div class="metric-value">${data.input_count} networks</div></div>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('sn-results').innerHTML = html;
+}
+</script>
+</body>
+</html>
